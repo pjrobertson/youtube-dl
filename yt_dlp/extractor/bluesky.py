@@ -284,7 +284,7 @@ class BlueskyIE(InfoExtractor):
             services, ('service', lambda _, x: x['type'] == 'AtprotoPersonalDataServer',
                        'serviceEndpoint', {url_or_none}, any)) or 'https://bsky.social'
 
-    def _real_extract(self, url):
+    def _extract_status(self, url):
         handle, video_id = self._match_valid_url(url).group('handle', 'id')
 
         post = self._download_json(
@@ -294,6 +294,12 @@ class BlueskyIE(InfoExtractor):
                 'depth': 0,
                 'parentHeight': 0,
             })['thread']['post']
+
+        return post, handle, video_id
+
+    def _real_extract(self, url):
+
+        post, handle, video_id = self._extract_status(url)
 
         entries = []
         # app.bsky.embed.video.view/app.bsky.embed.external.view
@@ -305,7 +311,6 @@ class BlueskyIE(InfoExtractor):
         if nested_post := traverse_obj(post, ('embed', 'record', ('record', None), {dict}, any)):
             entries.extend(self._extract_videos(
                 nested_post, video_id, embed_path=('embeds', 0), record_path='value'))
-
         if not entries:
             raise ExtractorError('No video could be found in this post', expected=True)
         if len(entries) == 1:
